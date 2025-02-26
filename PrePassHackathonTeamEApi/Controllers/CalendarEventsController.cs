@@ -1,32 +1,35 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using PrePassHackathonTeamEApi;
 using PrePassHackathonTeamEApi.Models;
 
+//[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class CalendarEventsController : ControllerBase
 {
     private readonly List<CalendarEvent> _events = new();  // Temporary in-memory storage
-    private readonly IMemoryCache _cache;
+   // private readonly IMemoryCache _cache;
     private const string CacheKey = "CalendarEvents";
-    private static readonly TimeSpan CacheDuration = TimeSpan.FromDays(30);
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(10);
 
-    public CalendarEventsController(IMemoryCache cache)
+    private readonly MemoryCacheService _cacheService;
+
+    public CalendarEventsController(MemoryCacheService memoryCacheService)
     {
-        _cache = cache;
+        //_cache = cache;
+
+        _cacheService = memoryCacheService;
     }
 
     [HttpGet]
     public ActionResult<IEnumerable<CalendarEvent>> GetAll([FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate)
     {
-        var events = _cache.GetOrCreate(CacheKey, entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
-            return _events;
-        });
+        List<CalendarEvent> cachedEvents = GetCache(); 
 
-        var query = events.AsQueryable();
+        var query = cachedEvents.AsQueryable();
 
         if (startDate.HasValue)
             query = query.Where(e => e.StartTime >= startDate.Value);
@@ -50,25 +53,35 @@ public class CalendarEventsController : ControllerBase
         List<CalendarEvent> cachedEvents = GetCache();
         cachedEvents.AddRange(calendarEvents);
         var cacheOptions = new MemoryCacheEntryOptions()
-               .SetSlidingExpiration(TimeSpan.FromDays(10));       
-
-        _cache.Set(CacheKey, cachedEvents, cacheOptions);
-      
+              .SetAbsoluteExpiration(CacheDuration) // Expire in 10 mins
+              .SetSlidingExpiration(CacheDuration); // Reset expiration if accessed   
+        List<string> stringList = new();
+        foreach (var calendarEvent in cachedEvents)
+        {
+            stringList.Add( JsonConvert.SerializeObject(calendarEvent));
+        }
+        _cacheService.Set(CacheKey, stringList, CacheDuration);
+        //_cache.Set(CacheKey, cachedEvents, cacheOptions);   
     }
 
 
     private List<CalendarEvent> GetCache()
     {
-        if (!_cache.TryGetValue(CacheKey, out List<CalendarEvent>? events))
+
+        List<CalendarEvent> cacheList = new List<CalendarEvent>();
+        if (!_cacheService.TryGet(CacheKey, out List<string>? events))
         {          
             if (events == null)
             {
-                events = new List<CalendarEvent>();
-            } 
-            return events;
+                return cacheList;
+            }
+            foreach (string item in events)
+            {
+                cacheList.Add(JsonConvert.DeserializeObject<CalendarEvent>(item));
+            }
         }
 
-        return new List<CalendarEvent>();
+        return cacheList;
     }
 
     [HttpPost]
@@ -77,7 +90,7 @@ public class CalendarEventsController : ControllerBase
         calendarEvent.Id = _events.Count + 1;
         _events.Add(calendarEvent);
         SetCache(new List<CalendarEvent> { calendarEvent});     
-        return CreatedAtAction(nameof(GetById), new { id = calendarEvent.Id }, calendarEvent);
+        return GetById(calendarEvent.Id);
     }
 
     [HttpGet("{id}")]
@@ -87,7 +100,7 @@ public class CalendarEventsController : ControllerBase
        List<CalendarEvent> events = GetCache();
         var calendarEvent = events.FirstOrDefault(e => e.Id == id);
         if (calendarEvent == null)
-            return NotFound();
+            return NoContent();
 
         return Ok(calendarEvent);
     }
@@ -122,7 +135,7 @@ public class CalendarEventsController : ControllerBase
             return NotFound();
 
         _events.Remove(calendarEvent);
-        _cache.Remove(CacheKey); // Invalidate cache
+        _cacheService.Remove(CacheKey); // Invalidate cache
         return NoContent();
     }
 } 
