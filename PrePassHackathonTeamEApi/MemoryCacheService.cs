@@ -28,15 +28,15 @@ namespace PrePassHackathonTeamEApi
         public void Set<T>(string key, T value, TimeSpan? absoluteExpiration = null, TimeSpan? slidingExpiration = null)
         {
             var cacheOptions = new MemoryCacheEntryOptions();
-           // cacheOptions.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
-             cacheOptions.SetAbsoluteExpiration(DateTimeOffset.UtcNow.AddHours(10)); // Cache expires in 10 min
-             //.SetSlidingExpiration(TimeSpan.FromMinutes(2));   //
+             cacheOptions.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
+            //cacheOptions.SetAbsoluteExpiration(DateTimeOffset.UtcNow.AddHours(10)); // Cache expires in 10 min
+            //.SetSlidingExpiration(TimeSpan.FromMinutes(2));   //
 
-            //if (absoluteExpiration.HasValue)
-            //    cacheOptions.SetAbsoluteExpiration(absoluteExpiration.Value);
+            if (absoluteExpiration.HasValue)
+                cacheOptions.SetAbsoluteExpiration(absoluteExpiration.Value);
 
-           // if (slidingExpiration.HasValue)
-            //    cacheOptions.SetSlidingExpiration(slidingExpiration.Value);
+            if (slidingExpiration.HasValue)
+                cacheOptions.SetSlidingExpiration(slidingExpiration.Value);
 
             _cache.Set(key, value, cacheOptions);
         }
