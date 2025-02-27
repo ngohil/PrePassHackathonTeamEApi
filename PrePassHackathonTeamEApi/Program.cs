@@ -6,7 +6,8 @@ using System.Text;
 string key = "XOxQFDzAjOJeeHGSRYMmZZntyVg/IuKL4H0aw=ghNhaF4zDOT81aS7Maf28wmc0mMp=Gqx1o22m4xXE7lRBfxKMkR9FDj0wbZPG6BlxNdGF-Rca3pgGOTn5UMfFM?aT6VsjP6/yJpFgbW8QmTpMMuxaZcHrPxE?Cs0qZ6zRIkU3P=?4Xnrj7RKdY029F8Lw!nJ00QzB2ADqLW7bqdr6DNpp7mu1G=dxmpvw1q5Hs6k9EQ-jt-vHPq5?fJkhv0oyE";
 string filePath = "data.json";
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddSingleton<MemoryCacheService>();
+//builder.Services.AddSingleton<MemoryCacheService>();
+builder.Services.AddSingleton<FileDataService>();
 
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi

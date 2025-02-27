@@ -4,8 +4,11 @@ namespace PrePassHackathonTeamEApi.Models
 {
     public class CalendarEvent
     {
+        //[JsonProperty]
+        //public int? Id { get; set; }
+
         [JsonProperty]
-        public int Id { get; set; }
+        public string? EventId { get; set; }
 
         [JsonProperty]
         public string Title { get; set; } = string.Empty;
