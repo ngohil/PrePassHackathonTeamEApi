@@ -2,7 +2,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using PrePassHackathonTeamEApi;
 using System.Text;
-
+using Microsoft.OpenApi.Models;
+using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,7 +18,50 @@ builder.Services.AddSingleton<FileDataService>();
 //builder.Services.AddOpenApi();
 
 builder.Services.AddEndpointsApiExplorer(); // Add this line
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "PrePass Hackathon Team E API",
+        Version = "v1",
+        Description = "API for managing family members and calendar events",
+        Contact = new OpenApiContact
+        {
+            Name = "Team E",
+            Email = "team.e@prepass.hackathon"
+        }
+    });
+
+    // Configure JWT authentication in Swagger
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+
+    // Include XML comments
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    options.IncludeXmlComments(xmlPath);
+});
 
 // Get the secret key from appsettings.json
 var appSettings = builder.Configuration.GetSection("AppSettings").Get<AppSettings>();
