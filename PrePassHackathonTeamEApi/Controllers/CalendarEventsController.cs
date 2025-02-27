@@ -7,22 +7,12 @@ using PrePassHackathonTeamEApi.Models;
 [ApiController]
 [Route("api/[controller]")]
 public class CalendarEventsController : ControllerBase
-{
-    private readonly List<CalendarEvent> _events = new();  // Temporary in-memory storage
-   // private readonly IMemoryCache _cache;
-    private const string CacheKey = "CalendarEvents";
-    private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(10);
-
-   // private readonly MemoryCacheService _cacheService;
+{  
     private readonly FileDataService _fileDataService;
 
     public CalendarEventsController(FileDataService fileDataService)
-    {
-        //_cache = cache;
-
-        //_cacheService = memoryCacheService;
-        _fileDataService = fileDataService;
-   
+    {        
+        _fileDataService = fileDataService;   
     }
 
     [HttpGet]
@@ -39,51 +29,13 @@ public class CalendarEventsController : ControllerBase
             query = query.Where(e => e.EndTime <= endDate.Value);
 
         return Ok(query.ToList());
-    }   
-
-    //private void SetCache(List<CalendarEvent> calendarEvents)
-    //{
-
-    //    List<CalendarEvent> cachedEvents = _fileDataService.ReadItemsAsync().GetAwaiter().GetResult();
-    //    cachedEvents.AddRange(calendarEvents);   
-
-    //    _fileDataService.WriteItemsAsync(cachedEvents).GetAwaiter().GetResult();
-    //    //var cacheOptions = new MemoryCacheEntryOptions()
-    //    //    .SetAbsoluteExpiration(CacheDuration) // Expire in 10 mins
-    //    //    .SetSlidingExpiration(CacheDuration); // Reset expiration if accessed   
-    //    //_cacheService.Set(CacheKey, stringList, CacheDuration);
-    //    //_cache.Set(CacheKey, cachedEvents, cacheOptions);   
-    //}
-
-
-    ////private List<CalendarEvent> GetCache()
-    ////{
-
-    ////  return   _fileDataService.ReadItemsAsync().GetAwaiter().GetResult();
-
-    ////    //List<CalendarEvent> cacheList = new List<CalendarEvent>();
-    ////    //if (!_cacheService.TryGet(CacheKey, out List<string>? events))
-    ////    //{          
-    ////    //    if (events == null)
-    ////    //    {
-    ////    //        return cacheList;
-    ////    //    }
-    ////    //    foreach (string item in events)
-    ////    //    {
-    ////    //        cacheList.Add(JsonConvert.DeserializeObject<CalendarEvent>(item));
-    ////    //    }
-    ////    //}
-
-       
-    ////}
+    } 
 
     [HttpPost]
     public ActionResult<CalendarEvent> Create(CalendarEvent calendarEvent)
     {     
         
-        calendarEvent.EventId = Guid.NewGuid().ToString();
-        _events.Add(calendarEvent);
-       // SetCache(new List<CalendarEvent> { calendarEvent});
+        calendarEvent.EventId = Guid.NewGuid().ToString();      
       _fileDataService.AppendItemAsync(calendarEvent).GetAwaiter().GetResult();
 
         return GetById(calendarEvent.EventId);
@@ -101,25 +53,22 @@ public class CalendarEventsController : ControllerBase
         return Ok(calendarEvent);
     }    
 
-    [HttpPut("{eventid}")]
-    public IActionResult Update(string eventid, CalendarEvent calendarEvent)
+    [HttpPut()]
+    public ActionResult<CalendarEvent> Update(CalendarEvent calendarEvent)
     {
+        if(calendarEvent == null || string.IsNullOrEmpty(calendarEvent.EventId ) )
+            return BadRequest();
         List<CalendarEvent> events = _fileDataService.ReadItemsAsync().GetAwaiter().GetResult();
-        var existing = events.FirstOrDefault(e => e.EventId == eventid);
+        var existing = events.FirstOrDefault(e => e.EventId == calendarEvent.EventId);
         if (existing == null)
-            return NotFound();
+            return NoContent();       
 
-        existing.Title = calendarEvent.Title;
-        existing.Description = calendarEvent.Description;
-        existing.StartTime = calendarEvent.StartTime;
-        existing.EndTime = calendarEvent.EndTime;
-        existing.Priority = calendarEvent.Priority;
-        existing.IsRecurring = calendarEvent.IsRecurring;       
-        existing.RecurrencePattern = calendarEvent.RecurrencePattern;
+        events.Remove(existing);
+        events.Add(calendarEvent);
 
-       // SetCache(events);
+        _fileDataService.WriteItemsAsync(events).GetAwaiter().GetResult();
 
-        return NoContent();
+         return GetById(calendarEvent.EventId!);
     }
 
     [HttpDelete("{eventid}")]
@@ -128,9 +77,9 @@ public class CalendarEventsController : ControllerBase
         List<CalendarEvent> events = _fileDataService.ReadItemsAsync().GetAwaiter().GetResult();
         var calendarEvent = events.FirstOrDefault(e => e.EventId == eventid);
         if (calendarEvent == null)
-            return NotFound();
+            return NoContent();
 
-        _events.Remove(calendarEvent);
+        events.Remove(calendarEvent);
        _fileDataService.WriteItemsAsync(events).GetAwaiter().GetResult(); // Invalidate cache
         return Ok();
     }
