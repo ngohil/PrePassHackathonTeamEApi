@@ -1,8 +1,9 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PrePassHackathonTeamEApi;
 using PrePassHackathonTeamEApi.Models;
 
-//[Authorize]
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class CalendarEventsController : ControllerBase
